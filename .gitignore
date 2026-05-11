@@ -32,3 +32,6 @@ build/
 
 # n8n exports temporaires
 workflows/n8n/exports-tmp/
+
+# Local Netlify folder
+.netlify
