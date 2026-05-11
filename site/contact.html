@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit gratuit — Agency IA</title>
+  <meta name="description" content="Demandez votre audit gratuit. On analyse votre site et votre présence LinkedIn et on vous répond sous 24h ouvrées.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav__inner">
+    <a href="index.html" class="nav__logo">Agency<span>IA</span></a>
+    <ul class="nav__links">
+      <li><a href="offres.html">Offres</a></li>
+      <li><a href="process.html">Comment ça marche</a></li>
+      <li><a href="cas-usage.html">Cas d'usage</a></li>
+    </ul>
+    <a href="contact.html" class="btn btn--primary nav__cta">Audit gratuit →</a>
+  </div>
+</nav>
+
+<section class="hero" style="padding-bottom: 64px;">
+  <div class="container">
+    <div class="hero__label">Audit gratuit</div>
+    <h1>On analyse votre situation.<br>Vous recevez le rapport sous 48h.</h1>
+    <p class="hero__subtitle">Remplissez ce formulaire. On regarde votre site et votre présence LinkedIn, et on vous envoie un diagnostic honnête — avec les 3 actions prioritaires. Sans engagement.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 0;">
+  <div class="container">
+    <div class="grid-2" style="gap: 64px; align-items: start;">
+
+      <!-- Formulaire -->
+      <div>
+        <form id="audit-form" novalidate>
+          <div class="form-group">
+            <label for="name">Votre prénom et nom *</label>
+            <input type="text" id="name" name="contact_name" placeholder="Jean Martin" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email professionnel *</label>
+            <input type="email" id="email" name="email" placeholder="jean@entreprise.fr" required>
+          </div>
+          <div class="form-group">
+            <label for="company">Nom de votre entreprise *</label>
+            <input type="text" id="company" name="company_name" placeholder="SARL Martin Consulting" required>
+          </div>
+          <div class="form-group">
+            <label for="website">URL de votre site web</label>
+            <input type="url" id="website" name="website" placeholder="https://www.votresite.fr">
+          </div>
+          <div class="form-group">
+            <label for="sector">Secteur d'activité *</label>
+            <select id="sector" name="sector" required>
+              <option value="" disabled selected>Choisir votre secteur</option>
+              <option value="recrutement">Recrutement / RH</option>
+              <option value="conseil">Conseil / Stratégie</option>
+              <option value="formation">Formation professionnelle</option>
+              <option value="it-esn">IT / ESN</option>
+              <option value="immobilier-entreprise">Immobilier d'entreprise</option>
+              <option value="comptabilite">Expertise comptable</option>
+              <option value="juridique">Juridique</option>
+              <option value="autre">Autre services B2B</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="offer">Quelle offre vous intéresse ?</label>
+            <select id="offer" name="offer">
+              <option value="" disabled selected>Pas encore décidé</option>
+              <option value="content-engine">Content Engine (contenu mensuel)</option>
+              <option value="website-upgrade">Website Conversion Upgrade</option>
+              <option value="bundle">Les deux (bundle)</option>
+              <option value="audit-seulement">Juste l'audit pour l'instant</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="problem">Quel est votre principal problème marketing aujourd'hui ? *</label>
+            <textarea id="problem" name="problem" placeholder="Ex : On publie peu sur LinkedIn, notre site ne génère pas de leads, on ne sait pas par où commencer..." required></textarea>
+          </div>
+
+          <div id="form-error" style="display:none; padding: 12px 16px; background: rgba(220,50,50,.1); border: 1px solid rgba(220,50,50,.3); border-radius: 8px; color: #e57373; font-size: .9rem; margin-bottom: 20px;"></div>
+          <div id="form-success" style="display:none; padding: 16px 20px; background: rgba(200,169,110,.1); border: 1px solid rgba(200,169,110,.3); border-radius: 8px; color: var(--accent); font-size: .95rem; margin-bottom: 20px;"></div>
+
+          <button type="submit" class="btn btn--primary" style="width: 100%; justify-content: center;" id="submit-btn">
+            Envoyer ma demande d'audit →
+          </button>
+          <p style="margin-top: 12px; font-size: .8rem; color: var(--text-muted); text-align: center;">Réponse sous 24h ouvrées · Aucun engagement · Aucune carte bancaire</p>
+        </form>
+      </div>
+
+      <!-- Sidebar -->
+      <div>
+        <h3 style="margin-bottom: 24px;">Ce qui se passe ensuite</h3>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div class="process-step" style="padding: 0 0 20px; border-bottom: 1px solid var(--border);">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h3>On analyse votre situation (J+1)</h3>
+              <p>On regarde votre site et votre LinkedIn. On identifie les 3 blocages principaux.</p>
+            </div>
+          </div>
+          <div class="process-step" style="padding: 0 0 20px; border-bottom: 1px solid var(--border);">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h3>Vous recevez le rapport (J+2)</h3>
+              <p>Un diagnostic honnête avec les priorités et des recommandations concrètes. Sans jargon.</p>
+            </div>
+          </div>
+          <div class="process-step" style="padding: 0 0 20px;">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h3>On discute si c'est pertinent (J+3)</h3>
+              <p>Si notre offre peut vous aider, on propose un call de 20 min. Si ce n'est pas le bon moment, on se dit à bientôt.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 40px;">
+          <h3 style="margin-bottom: 8px;">Vous préférez discuter d'abord ?</h3>
+          <p style="font-size: .9rem; margin-bottom: 16px;">Envoyez-moi un email direct ou un message LinkedIn. Pas de formulaire requis.</p>
+          <p style="font-size: .9rem; color: var(--accent);">hello@votreagence.com</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer__inner">
+    <div class="footer__logo">Agency<span>IA</span></div>
+    <div class="footer__links">
+      <a href="offres.html">Offres</a>
+      <a href="process.html">Process</a>
+      <a href="cas-usage.html">Cas d'usage</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <div class="footer__legal">© 2024 AgencyIA — Tous droits réservés</div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

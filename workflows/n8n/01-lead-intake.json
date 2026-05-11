@@ -1,0 +1,188 @@
+{
+  "name": "01 — Lead Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-lead-intake",
+      "name": "Webhook — Formulaire site",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!($json.body?.contact_name) && !!($json.body?.email) && !!($json.body?.company_name) }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "check-payload",
+      "name": "Vérifier payload obligatoire",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [440, 300],
+      "notes": "Vérifie contact_name, email, company_name. TRUE → continuer. FALSE → 400."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\": \"Champs obligatoires manquants : contact_name, email, company_name\"}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "respond-400",
+      "name": "Réponse 400 Bad Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [640, 480]
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "create",
+        "databaseId": "={{ $env.NOTION_DATABASE_PROSPECTS }}",
+        "title": "={{ $node['Webhook — Formulaire site'].json.body.company_name + ' — ' + $node['Webhook — Formulaire site'].json.body.contact_name }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Statut",
+              "type": "select",
+              "selectValue": "Nouveau"
+            },
+            {
+              "key": "Nom contact",
+              "type": "rich_text",
+              "textValue": "={{ $node['Webhook — Formulaire site'].json.body.contact_name }}"
+            },
+            {
+              "key": "Email",
+              "type": "email",
+              "emailValue": "={{ $node['Webhook — Formulaire site'].json.body.email }}"
+            },
+            {
+              "key": "Entreprise",
+              "type": "rich_text",
+              "textValue": "={{ $node['Webhook — Formulaire site'].json.body.company_name }}"
+            },
+            {
+              "key": "Site web",
+              "type": "url",
+              "urlValue": "={{ $node['Webhook — Formulaire site'].json.body.website || '' }}"
+            },
+            {
+              "key": "Secteur",
+              "type": "rich_text",
+              "textValue": "={{ $node['Webhook — Formulaire site'].json.body.sector || '' }}"
+            },
+            {
+              "key": "Problème décrit",
+              "type": "rich_text",
+              "textValue": "={{ $node['Webhook — Formulaire site'].json.body.problem || '' }}"
+            },
+            {
+              "key": "Offre demandée",
+              "type": "rich_text",
+              "textValue": "={{ $node['Webhook — Formulaire site'].json.body.offer || '' }}"
+            },
+            {
+              "key": "Source",
+              "type": "select",
+              "selectValue": "Site web"
+            },
+            {
+              "key": "Date premier contact",
+              "type": "date",
+              "dateValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "create-notion-prospect",
+      "name": "Créer fiche Prospect dans Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [640, 300],
+      "credentials": { "notionApi": { "id": "notion-api" } }
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@votreagence.com",
+        "toEmail": "={{ $node['Webhook — Formulaire site'].json.body.email }}",
+        "subject": "Votre demande d'audit — on revient vers vous sous 24h",
+        "emailType": "text",
+        "message": "Bonjour {{ $node['Webhook — Formulaire site'].json.body.contact_name }},\n\nJ'ai bien reçu votre demande concernant {{ $node['Webhook — Formulaire site'].json.body.company_name }}.\n\nJe reviens vers vous dans les 24h ouvrées pour organiser un call de 20 minutes.\n\nÀ très bientôt,\n[Votre prénom]\n[Agence]\n[Email direct]\n[Téléphone]"
+      },
+      "id": "email-auto-reponse",
+      "name": "Email auto-réponse au prospect",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [840, 240],
+      "credentials": { "smtp": { "id": "smtp" } }
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@votreagence.com",
+        "toEmail": "hello@votreagence.com",
+        "subject": "[NOUVEAU LEAD] {{ $node['Webhook — Formulaire site'].json.body.company_name }} — {{ $node['Webhook — Formulaire site'].json.body.sector }}",
+        "emailType": "text",
+        "message": "Nouveau lead reçu :\n\nNom : {{ $node['Webhook — Formulaire site'].json.body.contact_name }}\nEntreprise : {{ $node['Webhook — Formulaire site'].json.body.company_name }}\nEmail : {{ $node['Webhook — Formulaire site'].json.body.email }}\nSite : {{ $node['Webhook — Formulaire site'].json.body.website }}\nSecteur : {{ $node['Webhook — Formulaire site'].json.body.sector }}\nProblème décrit : {{ $node['Webhook — Formulaire site'].json.body.problem }}\n\nFiche Notion : {{ $node['Créer fiche Prospect dans Notion'].json.url }}\n\nAction requise : Contacter sous 4h ouvrées."
+      },
+      "id": "email-notification-interne",
+      "name": "Notification interne email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [840, 360],
+      "credentials": { "smtp": { "id": "smtp" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"success\": true, \"message\": \"Votre demande a bien été reçue.\"}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-200",
+      "name": "Réponse 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Formulaire site": {
+      "main": [
+        [{ "node": "Vérifier payload obligatoire", "type": "main", "index": 0 }]
+      ]
+    },
+    "Vérifier payload obligatoire": {
+      "main": [
+        [{ "node": "Créer fiche Prospect dans Notion", "type": "main", "index": 0 }],
+        [{ "node": "Réponse 400 Bad Request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Créer fiche Prospect dans Notion": {
+      "main": [
+        [
+          { "node": "Email auto-réponse au prospect", "type": "main", "index": 0 },
+          { "node": "Notification interne email", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Email auto-réponse au prospect": {
+      "main": [
+        [{ "node": "Réponse 200 OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["intake", "prospect", "automatique"]
+}

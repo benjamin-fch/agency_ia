@@ -1,0 +1,45 @@
+name: CodeQL — Analyse sécurité
+
+# Ce workflow analyse le code JavaScript côté site (assets/js/)
+# pour détecter les vulnérabilités courantes (XSS, injection, etc.)
+# Il tourne automatiquement sur push/PR vers main et chaque semaine.
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "site/assets/js/**"
+      - "scripts/**"
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Chaque lundi à 7h UTC
+    - cron: "0 7 * * 1"
+
+jobs:
+  analyze:
+    name: Analyser (JavaScript)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialiser CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          # Queries de sécurité et qualité
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Analyser
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript"

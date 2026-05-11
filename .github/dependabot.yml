@@ -1,0 +1,15 @@
+# Dependabot — Agency IA
+#
+# Ce repo n'a pas de dépendances npm/pip/gems.
+# Seules les GitHub Actions sont versionnées — Dependabot les maintient à jour.
+# Si un package.json est ajouté plus tard, ajouter un bloc "npm" ici.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "github-actions"

@@ -1,0 +1,238 @@
+{
+  "name": "05 — Production Contenu (Plan mensuel)",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerOn": "cronExpression",
+        "expression": "0 8 1 * *"
+      },
+      "id": "trigger-mensuel",
+      "name": "Déclencheur 1er du mois",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "notes": "Déclenche à 8h00 le 1er de chaque mois. Peut aussi être lancé manuellement."
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "getAll",
+        "databaseId": "={{ $env.NOTION_DATABASE_PROJETS }}",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "jsonExpression",
+        "filterJson": "{\"and\":[{\"property\":\"Statut\",\"select\":{\"equals\":\"Actif\"}},{\"property\":\"Offre\",\"select\":{\"equals\":\"Content Engine\"}}]}"
+      },
+      "id": "get-clients-actifs",
+      "name": "Récupérer clients Content Engine actifs",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [440, 300],
+      "credentials": { "notionApi": { "id": "notion-api" } }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-clients",
+      "name": "Traiter client par client",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "get",
+        "pageId": "={{ $json.properties['Brief ID']?.relation?.[0]?.id ?? '' }}"
+      },
+      "id": "get-brief-client",
+      "name": "Récupérer brief client",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [840, 300],
+      "credentials": { "notionApi": { "id": "notion-api" } },
+      "notes": "Nécessite une propriété 'Brief ID' (relation) dans la base Projets, liée à la page de brief."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "entreprise",
+              "value": "={{ $json.properties['Entreprise']?.rich_text?.[0]?.text?.content ?? 'Non renseigné' }}",
+              "type": "string"
+            },
+            {
+              "name": "secteur",
+              "value": "={{ $json.properties['Secteur']?.rich_text?.[0]?.text?.content ?? 'Non renseigné' }}",
+              "type": "string"
+            },
+            {
+              "name": "cible",
+              "value": "={{ $json.properties['Cible']?.rich_text?.[0]?.text?.content ?? 'Non renseigné' }}",
+              "type": "string"
+            },
+            {
+              "name": "ton",
+              "value": "={{ $json.properties['Ton']?.rich_text?.[0]?.text?.content ?? 'Professionnel et direct' }}",
+              "type": "string"
+            },
+            {
+              "name": "piliers",
+              "value": "={{ $json.properties['Piliers']?.rich_text?.[0]?.text?.content ?? 'Non renseigné' }}",
+              "type": "string"
+            },
+            {
+              "name": "contexte_mois",
+              "value": "={{ $json.properties['Contexte mois']?.rich_text?.[0]?.text?.content ?? 'Pas de contexte particulier' }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "extraire-brief",
+      "name": "Extraire champs du brief",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1040, 300],
+      "notes": "Extrait les champs Notion en variables simples pour construire le prompt."
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = items[0].json;\n\nconst prompt = [\n  'Tu es stratège en contenu B2B. Génère 10 angles de posts LinkedIn et 3 sujets d\\'articles pour le mois prochain.',\n  '',\n  'CLIENT : ' + b.entreprise,\n  'SECTEUR : ' + b.secteur,\n  'CIBLE : ' + b.cible,\n  'TON : ' + b.ton,\n  'PILIERS ÉDITORIAUX : ' + b.piliers,\n  'CONTEXTE DU MOIS : ' + b.contexte_mois,\n  '',\n  'Format de réponse STRICTEMENT respecté :',\n  '',\n  'LINKEDIN (10 angles) :',\n  '1. [Angle] — [Format: observation/cas concret/opinion/pédagogique] — [Longueur: court/moyen/long]',\n  '... (répéter jusqu\\'à 10)',\n  '',\n  'ARTICLES (3 sujets) :',\n  '1. [Titre H1 provisoire] — [Angle différenciateur] — [Mot-clé SEO cible]',\n  '... (répéter jusqu\\'à 3)'\n].join('\\n');\n\nconst requestBody = {\n  model: 'claude-sonnet-4-6',\n  max_tokens: 1500,\n  messages: [{ role: 'user', content: prompt }]\n};\n\nreturn [{ json: { ...b, requestBody: JSON.stringify(requestBody) } }];"
+      },
+      "id": "build-prompt",
+      "name": "Construire prompt Anthropic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.requestBody }}"
+      },
+      "id": "appel-claude",
+      "name": "Appel API Anthropic (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1440, 300],
+      "credentials": { "httpHeaderAuth": { "id": "anthropic-api-key" } },
+      "notes": "Credential 'anthropic-api-key' : type httpHeaderAuth, header name 'x-api-key', valeur = ANTHROPIC_API_KEY. La réponse est dans $json.content[0].text."
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "create",
+        "databaseId": "={{ $env.NOTION_DATABASE_PROJETS }}",
+        "title": "={{ 'Plan contenu — ' + $node['Extraire champs du brief'].json.entreprise + ' — ' + $now.toFormat('MMMM yyyy') }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Type",
+              "type": "select",
+              "selectValue": "Plan mensuel"
+            },
+            {
+              "key": "Statut",
+              "type": "select",
+              "selectValue": "À valider — HUMAIN REQUIS"
+            },
+            {
+              "key": "Contenu généré",
+              "type": "rich_text",
+              "textValue": "={{ $json.content[0].text }}"
+            },
+            {
+              "key": "Date",
+              "type": "date",
+              "dateValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "sauvegarder-plan-notion",
+      "name": "Sauvegarder plan dans Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1640, 300],
+      "credentials": { "notionApi": { "id": "notion-api" } }
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@votreagence.com",
+        "toEmail": "hello@votreagence.com",
+        "subject": "[ACTION REQUISE] Plan contenu à valider — {{ $node['Extraire champs du brief'].json.entreprise }}",
+        "emailType": "text",
+        "message": "Le plan de contenu mensuel a été généré automatiquement.\n\nCLIENT : {{ $node['Extraire champs du brief'].json.entreprise }}\n\n⚠️ VALIDATION HUMAINE REQUISE avant toute production.\n\nÉtapes :\n1. Ouvrir la fiche Notion : {{ $node['Sauvegarder plan dans Notion'].json.url }}\n2. Sélectionner les 8 angles LinkedIn retenus et les 2 sujets d'articles\n3. Changer le statut en 'Plan validé'\n4. Déclencher MANUELLEMENT la production des contenus\n\nLe contenu ne sera PAS produit automatiquement — ce workflow génère uniquement le plan."
+      },
+      "id": "notif-validation-plan",
+      "name": "Notification validation plan requis",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1840, 300],
+      "credentials": { "smtp": { "id": "smtp" } }
+    }
+  ],
+  "connections": {
+    "Déclencheur 1er du mois": {
+      "main": [
+        [{ "node": "Récupérer clients Content Engine actifs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Récupérer clients Content Engine actifs": {
+      "main": [
+        [{ "node": "Traiter client par client", "type": "main", "index": 0 }]
+      ]
+    },
+    "Traiter client par client": {
+      "main": [
+        [{ "node": "Récupérer brief client", "type": "main", "index": 0 }]
+      ]
+    },
+    "Récupérer brief client": {
+      "main": [
+        [{ "node": "Extraire champs du brief", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraire champs du brief": {
+      "main": [
+        [{ "node": "Construire prompt Anthropic", "type": "main", "index": 0 }]
+      ]
+    },
+    "Construire prompt Anthropic": {
+      "main": [
+        [{ "node": "Appel API Anthropic (Claude)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Appel API Anthropic (Claude)": {
+      "main": [
+        [{ "node": "Sauvegarder plan dans Notion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sauvegarder plan dans Notion": {
+      "main": [
+        [{ "node": "Notification validation plan requis", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["production", "contenu", "mensuel"]
+}

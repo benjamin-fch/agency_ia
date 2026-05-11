@@ -1,0 +1,250 @@
+{
+  "name": "03 — Onboarding Client",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onboarding",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-onboarding",
+      "name": "Webhook — Contrat signé",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "notes": "Déclenché manuellement après confirmation paiement acompte. Requiert X-Webhook-Secret."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!($json.body?.contact_name) && !!($json.body?.email) && !!($json.body?.company_name) && !!($json.body?.offer) }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "check-payload",
+      "name": "Vérifier payload obligatoire",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [440, 300],
+      "notes": "Champs requis : contact_name, email, company_name, offer. TRUE → continuer. FALSE → 400."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\": \"Champs obligatoires manquants : contact_name, email, company_name, offer\"}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "respond-400",
+      "name": "Réponse 400 Bad Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [640, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node['Webhook — Contrat signé'].json.headers['x-webhook-secret'] }}",
+              "operation": "equals",
+              "value2": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        }
+      },
+      "id": "check-secret",
+      "name": "Vérifier secret webhook",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "notes": "Ce webhook est interne. Vérifie X-Webhook-Secret. TRUE → continuer. FALSE → 401."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\": \"Unauthorized\"}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-401",
+      "name": "Réponse 401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 500]
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "create",
+        "databaseId": "={{ $env.NOTION_DATABASE_CLIENTS }}",
+        "title": "={{ $node['Webhook — Contrat signé'].json.body.company_name }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Statut",
+              "type": "select",
+              "selectValue": "Onboarding"
+            },
+            {
+              "key": "Nom contact",
+              "type": "rich_text",
+              "textValue": "={{ $node['Webhook — Contrat signé'].json.body.contact_name }}"
+            },
+            {
+              "key": "Email",
+              "type": "email",
+              "emailValue": "={{ $node['Webhook — Contrat signé'].json.body.email }}"
+            },
+            {
+              "key": "Offre",
+              "type": "select",
+              "selectValue": "={{ $node['Webhook — Contrat signé'].json.body.offer }}"
+            },
+            {
+              "key": "Date début",
+              "type": "date",
+              "dateValue": "={{ $now.toISO() }}"
+            },
+            {
+              "key": "Budget mensuel",
+              "type": "number",
+              "numberValue": "={{ Number($node['Webhook — Contrat signé'].json.body.budget) || 0 }}"
+            }
+          ]
+        }
+      },
+      "id": "create-client-notion",
+      "name": "Créer fiche Client dans Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [840, 300],
+      "credentials": { "notionApi": { "id": "notion-api" } }
+    },
+    {
+      "parameters": {
+        "resource": "page",
+        "operation": "create",
+        "databaseId": "={{ $env.NOTION_DATABASE_PROJETS }}",
+        "title": "={{ 'Projet — ' + $node['Webhook — Contrat signé'].json.body.company_name + ' — ' + $now.toFormat('MMM yyyy') }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Phase",
+              "type": "select",
+              "selectValue": "Onboarding"
+            },
+            {
+              "key": "Offre",
+              "type": "select",
+              "selectValue": "={{ $node['Webhook — Contrat signé'].json.body.offer }}"
+            },
+            {
+              "key": "Date création",
+              "type": "date",
+              "dateValue": "={{ $now.toISO() }}"
+            },
+            {
+              "key": "Client Notion ID",
+              "type": "rich_text",
+              "textValue": "={{ $node['Créer fiche Client dans Notion'].json.id }}"
+            }
+          ]
+        }
+      },
+      "id": "create-projet-notion",
+      "name": "Créer espace Projet dans Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1040, 300],
+      "credentials": { "notionApi": { "id": "notion-api" } },
+      "notes": "Créé APRÈS le Client (séquentiel) pour accéder à l'ID client. La relation Notion doit être liée manuellement dans l'interface."
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@votreagence.com",
+        "toEmail": "={{ $node['Webhook — Contrat signé'].json.body.email }}",
+        "subject": "Bienvenue — lançons votre onboarding",
+        "emailType": "text",
+        "message": "Bonjour {{ $node['Webhook — Contrat signé'].json.body.contact_name }},\n\nExcellente nouvelle — votre acompte est bien reçu et nous sommes officiellement lancés.\n\nProchaine étape : notre call d'onboarding.\nDurée : 60 minutes\nObjectif : finaliser votre brief, partager les accès nécessaires, et caler le calendrier de production.\n\nJe vous propose ces créneaux :\n[CRÉNEAUX À REMPLIR MANUELLEMENT AVANT D'ACTIVER CE WORKFLOW]\n\nÀ très vite,\n[Votre prénom]\n[Agence]\n[Email direct]"
+      },
+      "id": "email-bienvenue",
+      "name": "Email de bienvenue client",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1240, 240],
+      "credentials": { "smtp": { "id": "smtp" } }
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@votreagence.com",
+        "toEmail": "hello@votreagence.com",
+        "subject": "[NOUVEAU CLIENT] Onboarding — {{ $node['Webhook — Contrat signé'].json.body.company_name }}",
+        "emailType": "text",
+        "message": "Nouveau client onboardé :\n\n{{ $node['Webhook — Contrat signé'].json.body.company_name }} — {{ $node['Webhook — Contrat signé'].json.body.offer }}\nContact : {{ $node['Webhook — Contrat signé'].json.body.contact_name }} ({{ $node['Webhook — Contrat signé'].json.body.email }})\n\nFiche client Notion : {{ $node['Créer fiche Client dans Notion'].json.url }}\nEspace projet Notion : {{ $node['Créer espace Projet dans Notion'].json.url }}\n\n[VALIDATION HUMAINE REQUISE]\n1. Lier manuellement le Projet au Client dans Notion (champ relation)\n2. Mettre à jour les créneaux dans le template email bienvenue\n3. Préparer le dossier Google Drive client\n4. Remplir le brief client (templates/content/brief-contenu.md)"
+      },
+      "id": "notif-interne-onboarding",
+      "name": "Notification interne onboarding",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1240, 360],
+      "credentials": { "smtp": { "id": "smtp" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"success\": true}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-200",
+      "name": "Réponse 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1440, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Contrat signé": {
+      "main": [
+        [{ "node": "Vérifier payload obligatoire", "type": "main", "index": 0 }]
+      ]
+    },
+    "Vérifier payload obligatoire": {
+      "main": [
+        [{ "node": "Vérifier secret webhook", "type": "main", "index": 0 }],
+        [{ "node": "Réponse 400 Bad Request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Vérifier secret webhook": {
+      "main": [
+        [{ "node": "Créer fiche Client dans Notion", "type": "main", "index": 0 }],
+        [{ "node": "Réponse 401 Unauthorized", "type": "main", "index": 0 }]
+      ]
+    },
+    "Créer fiche Client dans Notion": {
+      "main": [
+        [{ "node": "Créer espace Projet dans Notion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Créer espace Projet dans Notion": {
+      "main": [
+        [
+          { "node": "Email de bienvenue client", "type": "main", "index": 0 },
+          { "node": "Notification interne onboarding", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Email de bienvenue client": {
+      "main": [
+        [{ "node": "Réponse 200 OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["onboarding", "client"]
+}
