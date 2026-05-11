@@ -33,40 +33,30 @@ if (form) {
       return;
     }
 
-    // Construire le payload
-    const formData = {
-      contact_name: form.contact_name.value.trim(),
-      email:        form.email.value.trim(),
-      company_name: form.company_name.value.trim(),
-      website:      form.website ? form.website.value.trim() : '',
-      sector:       form.sector.value,
-      offer:        form.offer ? form.offer.value : '',
-      problem:      form.problem.value.trim()
-    };
-
-    // Lire l'URL du webhook depuis l'attribut data du formulaire ou window config
-    const webhookUrl = form.dataset.webhookUrl || window.AUDIT_FORM_WEBHOOK_URL;
-
-    if (!webhookUrl) {
-      // Mode dev : simuler une soumission réussie
-      successDiv.textContent = 'Demande reçue ! (Mode dev — webhook non configuré) Vous recevriez une réponse sous 24h.';
-      successDiv.style.display = 'block';
-      form.reset();
-      return;
-    }
-
     submitBtn.disabled = true;
     submitBtn.textContent = 'Envoi en cours…';
 
+    // Encoder les données au format attendu par Netlify Forms
+    const encode = (data) => Object.keys(data)
+      .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k]))
+      .join('&');
+
+    const payload = encode({
+      'form-name':   'audit',
+      contact_name:  form.contact_name.value.trim(),
+      email:         form.email.value.trim(),
+      company_name:  form.company_name.value.trim(),
+      website:       form.website ? form.website.value.trim() : '',
+      sector:        form.sector.value,
+      offer:         form.offer ? form.offer.value : '',
+      problem:       form.problem.value.trim()
+    });
+
     try {
-      // Note sécurité : ne jamais envoyer de secret depuis le front — il serait visible dans les sources.
-      // Protection = URL de webhook non-devinable (UUID n8n) + rate limiting côté n8n.
-      const response = await fetch(webhookUrl, {
+      const response = await fetch('/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: payload
       });
 
       if (response.ok) {
@@ -77,7 +67,7 @@ if (form) {
         throw new Error('Erreur serveur : ' + response.status);
       }
     } catch (err) {
-      errorDiv.textContent = 'Une erreur est survenue. Envoyez-nous directement un email à hello@votreagence.com.';
+      errorDiv.textContent = 'Une erreur est survenue. Envoyez-nous directement un email à benjamin.fauchon05@gmail.com.';
       errorDiv.style.display = 'block';
     } finally {
       submitBtn.disabled = false;

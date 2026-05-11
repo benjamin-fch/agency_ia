@@ -38,7 +38,8 @@
 
       <!-- Formulaire -->
       <div>
-        <form id="audit-form" novalidate>
+        <form id="audit-form" name="audit" data-netlify="true" novalidate>
+          <input type="hidden" name="form-name" value="audit">
           <div class="form-group">
             <label for="name">Votre prénom et nom *</label>
             <input type="text" id="name" name="contact_name" placeholder="Jean Martin" required>
