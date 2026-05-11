@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://agency-ia-574.netlify.app/sitemap.xml
